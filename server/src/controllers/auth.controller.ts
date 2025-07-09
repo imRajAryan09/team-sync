@@ -20,15 +20,18 @@ export const googleLoginCallback = asyncHandler(
     req.session.save((err) => {
       if (err) {
         console.error("Session save error:", err);
+        res.redirect(
+          `${config.FRONTEND_GOOGLE_CALLBACK_URL}?status=failure`
+        );
       } else {
         console.log("Session saved successfully");
+        console.log("Session ID after save:", req.sessionID);
+        console.log("Redirecting to workspace:", currentWorkspace);
+        res.redirect(
+          `${config.FRONTEND_ORIGIN}/workspace/${currentWorkspace}`
+        );
       }
     });
-
-    console.log("Redirecting to workspace:", currentWorkspace);
-    return res.redirect(
-      `${config.FRONTEND_ORIGIN}/workspace/${currentWorkspace}`
-    );
   }
 );
 

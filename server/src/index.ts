@@ -41,16 +41,18 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
-      name:"session",
+    name: "session",
     secret: config.SESSION_SECRET,
-    resave: true,
+    resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: config.NODE_ENV === "production",
+      secure:
+        config.NODE_ENV === "production" && process.env.FORCE_HTTPS !== "false",
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: config.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 24 * 60 * 60 * 1000,
       path: "/",
+      domain: config.NODE_ENV === "production" ? undefined : undefined,
     },
   })
 );
