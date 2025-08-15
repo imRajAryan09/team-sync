@@ -121,7 +121,10 @@ export const logOutController = asyncHandler(
 
 export const refreshTokenController = asyncHandler(
   async (req: Request, res: Response) => {
+    console.log('All cookies:', req.cookies);
+    console.log('Cookie header:', req.headers.cookie);
     const refreshToken = req.cookies.refreshToken;
+    console.log('Refresh token found:', !!refreshToken);
 
     if (!refreshToken) {
       cookieUtils.clearRefreshToken(res);

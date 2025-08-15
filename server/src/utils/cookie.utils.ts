@@ -11,10 +11,12 @@ const getCookieOptions = () => ({
 
 export const cookieUtils = {
   setRefreshToken: (res: Response, token: string) => {
-    res.cookie('refreshToken', token, {
+    const options = {
       ...getCookieOptions(),
       maxAge: ms(config.JWT_REFRESH_EXPIRES_IN as StringValue),
-    });
+    };
+    console.log('Setting cookie with options:', options);
+    res.cookie('refreshToken', token, options);
   },
 
   clearRefreshToken: (res: Response) => {
