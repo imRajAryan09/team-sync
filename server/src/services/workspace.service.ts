@@ -95,7 +95,7 @@ export const getWorkspaceByIdService = async (workspaceId: string) => {
 };
 
 //********************************
-// GET ALL MEMEBERS IN WORKSPACE
+// GET ALL MEMBERS IN WORKSPACE
 //**************** **************/
 
 export const getWorkspaceMembersService = async (workspaceId: string) => {
@@ -249,14 +249,14 @@ export const deleteWorkspaceService = async (
 
     await session.commitTransaction();
 
-    session.endSession();
+    await session.endSession();
 
     return {
       currentWorkspace: user.currentWorkspace,
     };
   } catch (error) {
     await session.abortTransaction();
-    session.endSession();
+    await session.endSession();
     throw error;
   }
 };

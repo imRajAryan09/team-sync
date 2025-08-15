@@ -1,3 +1,4 @@
+import GoogleOAuthSuccess from "@/page/auth/GoogleOAuthSuccess";
 import GoogleOAuthFailure from "@/page/auth/GoogleOAuthFailure";
 import SignIn from "@/page/auth/Sign-in";
 import SignUp from "@/page/auth/Sign-up";
@@ -12,7 +13,12 @@ import InviteUser from "@/page/invite/InviteUser";
 export const authenticationRoutePaths = [
   { path: AUTH_ROUTES.SIGN_IN, element: <SignIn /> },
   { path: AUTH_ROUTES.SIGN_UP, element: <SignUp /> },
-  { path: AUTH_ROUTES.GOOGLE_OAUTH_CALLBACK, element: <GoogleOAuthFailure /> },
+  { path: AUTH_ROUTES.GOOGLE_OAUTH_CALLBACK, element: <GoogleOAuthSuccess /> },
+  { path: AUTH_ROUTES.GOOGLE_OAUTH_FAILURE, element: <GoogleOAuthFailure /> },
+];
+
+export const baseRoutePaths = [
+  { path: BASE_ROUTE.INVITE_URL, element: <InviteUser /> },
 ];
 
 export const protectedRoutePaths = [
@@ -23,6 +29,4 @@ export const protectedRoutePaths = [
   { path: PROTECTED_ROUTES.PROJECT_DETAILS, element: <ProjectDetails /> },
 ];
 
-export const baseRoutePaths = [
-  { path: BASE_ROUTE.INVITE_URL, element: <InviteUser /> },
-];
+

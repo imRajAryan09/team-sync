@@ -50,11 +50,11 @@ passport.use(
     {
       usernameField: "email",
       passwordField: "password",
-      session: true,
+      session: false,
     },
     async (email, password, done) => {
       try {
-        const user = await verifyUserService({ email, password });
+        const { user } = await verifyUserService({ email, password });
         return done(null, user);
       } catch (error: any) {
         return done(error, false, { message: error?.message });
@@ -62,18 +62,4 @@ passport.use(
     }
   )
 );
-
-passport.serializeUser((user: any, done) => {
-  done(null, user._id);
-});
-
-passport.deserializeUser(async (id: string, done) => {
-  try {
-    const user = await UserModel.findById(id).select("-password");
-    done(null, user);
-  } catch (error) {
-    console.error("Deserialization error occurred while fetching user:", error);
-    done(error, null);
-  }
-});
 

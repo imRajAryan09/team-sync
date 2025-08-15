@@ -4,34 +4,48 @@ import { config } from "../config/app.config";
 import { registerSchema } from "../validation/auth.validation";
 import { HTTPSTATUS } from "../config/http.config";
 import { registerUserService } from "../services/auth.service";
+import { verifyRefreshToken, generateAccessToken, generateRefreshToken } from "../utils/jwt";
+import { UnauthorizedException } from "../utils/appError";
+import UserModel from "../models/user.model";
 import passport from "passport";
+
 
 export const googleLoginCallback = asyncHandler(
   async (req: Request, res: Response) => {
-    const currentWorkspace = req.user?.currentWorkspace;
-
+    const user = req.user as any;
+    const currentWorkspace = user?.currentWorkspace?.toString();
     if (!currentWorkspace) {
       return res.redirect(
         `${config.FRONTEND_GOOGLE_CALLBACK_URL}?status=failure`
       );
     }
-
-    // Manually save the session to ensure it's persisted
-    req.session.save((err) => {
-      if (err) {
-        console.error("Session save error:", err);
-        res.redirect(
-          `${config.FRONTEND_GOOGLE_CALLBACK_URL}?status=failure`
-        );
-      } else {
-        console.log("Session saved successfully");
-        console.log("Session ID after save:", req.sessionID);
-        console.log("Redirecting to workspace:", currentWorkspace);
-        res.redirect(
-          `${config.FRONTEND_ORIGIN}/workspace/${currentWorkspace}`
-        );
-      }
+    // Generate JWT tokens
+    const accessToken = generateAccessToken({ 
+      userId: user._id.toString(), 
+      email: user.email,
+      name: user.name,
+      profilePicture: user.profilePicture,
+      currentWorkspace: currentWorkspace || null
     });
+    const refreshToken = generateRefreshToken({ 
+      userId: user._id.toString(), 
+      email: user.email,
+      name: user.name,
+      profilePicture: user.profilePicture,
+      currentWorkspace: currentWorkspace || null
+    });
+
+  
+    // Set refresh token as HttpOnly cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: config.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/'
+    });
+
+    res.redirect(`${config.FRONTEND_ORIGIN}/google/callback?status=success`);
   }
 );
 
@@ -68,16 +82,42 @@ export const loginController = asyncHandler(
           });
         }
 
-        req.logIn(user, (err) => {
-          if (err) {
-            return next(err);
-          }
-
-          return res.status(HTTPSTATUS.OK).json({
-            message: "Logged in successfully",
-            user,
-          });
+        const currentWorkspace = user.currentWorkspace;
+        
+        // Generate JWT tokens
+        const accessToken = generateAccessToken({ 
+          userId: user._id.toString(), 
+          email: user.email,
+          name: user.name,
+          profilePicture: user.profilePicture,
+          currentWorkspace: currentWorkspace?.toString() || null
         });
+        const refreshToken = generateRefreshToken({ 
+          userId: user._id.toString(), 
+          email: user.email,
+          name: user.name,
+          profilePicture: user.profilePicture,
+          currentWorkspace: currentWorkspace?.toString() || null
+        });
+
+        // Set refresh token as HttpOnly cookie
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: config.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          path: '/'
+        });
+
+        const responseData = {
+          message: "Logged in successfully",
+          user,
+          accessToken,
+        };
+        
+        console.log('Login API Response:', JSON.stringify(responseData, null, 2));
+        
+        return res.status(HTTPSTATUS.OK).json(responseData);
       }
     )(req, res, next);
   }
@@ -85,26 +125,70 @@ export const loginController = asyncHandler(
 
 export const logOutController = asyncHandler(
   async (req: Request, res: Response) => {
-    req.logout((err) => {
-      if (err) {
-        console.error("Logout error:", err);
-        return res
-          .status(HTTPSTATUS.INTERNAL_SERVER_ERROR)
-          .json({ error: "Failed to log out" });
-      }
+    // Clear refresh token cookie
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: config.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
     });
-
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Session destroy error:", err);
-        return res
-          .status(HTTPSTATUS.INTERNAL_SERVER_ERROR)
-          .json({ error: "Failed to destroy session" });
-      }
-    });
-
+    
     return res
       .status(HTTPSTATUS.OK)
       .json({ message: "Logged out successfully" });
+  }
+);
+
+export const refreshTokenController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      // Clear any existing cookie and return error
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: config.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/'
+      });
+      throw new UnauthorizedException("Refresh token required");
+    }
+
+    try {
+      const decoded = verifyRefreshToken(refreshToken);
+      const user = await UserModel.findById(decoded.userId).select("-password").populate('currentWorkspace', '_id');
+      
+      if (!user) {
+        // Clear invalid cookie
+        res.clearCookie('refreshToken', {
+          httpOnly: true,
+          secure: config.NODE_ENV === 'production',
+          sameSite: 'strict',
+          path: '/'
+        });
+        throw new UnauthorizedException("User not found");
+      }
+
+      const newAccessToken = generateAccessToken({ 
+        userId: user._id.toString(), 
+        email: user.email,
+        name: user.name,
+        profilePicture: user.profilePicture,
+        currentWorkspace: user.currentWorkspace?._id?.toString() || user.currentWorkspace?.toString() || null
+      });
+
+      return res.status(HTTPSTATUS.OK).json({
+        accessToken: newAccessToken,
+      });
+    } catch (error) {
+      // Clear invalid cookie
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: config.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/'
+      });
+      throw new UnauthorizedException("Invalid refresh token");
+    }
   }
 );

@@ -49,7 +49,6 @@ const LogoutDialog = (props: {
   }, [isPending, mutate]);
 
   return (
-    <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
@@ -70,7 +69,6 @@ const LogoutDialog = (props: {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
   );
 };
 

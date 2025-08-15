@@ -1,4 +1,6 @@
 import API from "./axios-client";
+import { tokenManager } from "./token-manager";
+import { authService } from "./auth-service";
 import {
   AllMembersInWorkspaceResponseType,
   AllProjectPayloadType,
@@ -30,18 +32,50 @@ export const loginMutationFn = async (
   data: loginType
 ): Promise<LoginResponseType> => {
   const response = await API.post("/auth/login", data);
-  return response.data;
+  const { accessToken, ...rest } = response.data;
+  
+  if (accessToken) {
+    tokenManager.setAccessToken(accessToken);
+  }
+  
+  return rest;
 };
 
 export const registerMutationFn = async (data: registerType) =>
   await API.post("/auth/register", data);
 
-export const logoutMutationFn = async () => await API.post("/auth/logout");
+export const logoutMutationFn = async () => {
+  await authService.logout();
+};
 
 export const getCurrentUserQueryFn =
   async (): Promise<CurrentUserResponseType> => {
-    const response = await API.get(`/user/current`);
-    return response.data;
+    // Refresh token if expired
+    const refreshSuccess = await tokenManager.refreshTokenIfNeeded();
+    
+    if (!refreshSuccess) {
+      // Redirect to login if refresh failed
+      window.location.href = '/login';
+      throw new Error('Authentication required');
+    }
+    
+    // Get user data from JWT token
+    const userFromToken = tokenManager.getCurrentUser();
+    if (!userFromToken) {
+      window.location.href = '/login';
+      throw new Error('Invalid token');
+    }
+    
+    return {
+      message: "User fetch successfully",
+      user: {
+        _id: userFromToken.userId,
+        name: userFromToken.name,
+        email: userFromToken.email,
+        profilePicture: userFromToken.profilePicture,
+        currentWorkspace: userFromToken.currentWorkspace
+      } as any
+    };
   };
 
 //********* WORKSPACE ****************

@@ -11,6 +11,7 @@ import {
 } from "../utils/appError";
 import MemberModel from "../models/member.model";
 import { ProviderEnum } from "../enums/account-provider.enum";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
 export const loginOrCreateAccountService = async (data: {
   provider: string;
@@ -76,7 +77,22 @@ export const loginOrCreateAccountService = async (data: {
     session.endSession();
     console.log("End Session...");
 
-    return { user };
+    const accessToken = generateAccessToken({ 
+      userId: (user._id as mongoose.Types.ObjectId).toString(), 
+      email: user.email,
+      name: user.name,
+      profilePicture: user.profilePicture,
+      currentWorkspace: user.currentWorkspace?._id?.toString() || user.currentWorkspace?.toString() || null
+    });
+    const refreshToken = generateRefreshToken({ 
+      userId: (user._id as mongoose.Types.ObjectId).toString(), 
+      email: user.email,
+      name: user.name,
+      profilePicture: user.profilePicture,
+      currentWorkspace: user.currentWorkspace?._id?.toString() || user.currentWorkspace?.toString() || null
+    });
+
+    return { user, accessToken, refreshToken };
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -184,5 +200,21 @@ export const verifyUserService = async ({
     throw new UnauthorizedException("Invalid email or password");
   }
 
-  return user.omitPassword();
+  const userWithoutPassword = user.omitPassword();
+  const accessToken = generateAccessToken({ 
+    userId: (user._id as mongoose.Types.ObjectId).toString(), 
+    email: user.email,
+    name: user.name,
+    profilePicture: user.profilePicture,
+    currentWorkspace: user.currentWorkspace?._id?.toString() || user.currentWorkspace?.toString() || null
+  });
+  const refreshToken = generateRefreshToken({ 
+    userId: (user._id as mongoose.Types.ObjectId).toString(), 
+    email: user.email,
+    name: user.name,
+    profilePicture: user.profilePicture,
+    currentWorkspace: user.currentWorkspace?._id?.toString() || user.currentWorkspace?.toString() || null
+  });
+
+  return { user: userWithoutPassword, accessToken, refreshToken };
 };
