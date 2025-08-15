@@ -8,6 +8,7 @@ import { verifyRefreshToken, generateAccessToken, generateRefreshToken } from ".
 import { UnauthorizedException } from "../utils/appError";
 import UserModel from "../models/user.model";
 import passport from "passport";
+import { cookieUtils } from "../utils/cookie.utils";
 
 
 export const googleLoginCallback = asyncHandler(
@@ -34,18 +35,10 @@ export const googleLoginCallback = asyncHandler(
       profilePicture: user.profilePicture,
       currentWorkspace: currentWorkspace || null
     });
+    
+    cookieUtils.setRefreshToken(res, refreshToken);
 
-  
-    // Set refresh token as HttpOnly cookie
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: config.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: '/'
-    });
-
-    res.redirect(`${config.FRONTEND_ORIGIN}/google/callback?status=success`);
+    res.redirect(`${config.FRONTEND_GOOGLE_CALLBACK_URL}?status=success`);
   }
 );
 
@@ -100,14 +93,7 @@ export const loginController = asyncHandler(
           currentWorkspace: currentWorkspace?.toString() || null
         });
 
-        // Set refresh token as HttpOnly cookie
-        res.cookie('refreshToken', refreshToken, {
-          httpOnly: true,
-          secure: config.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-          path: '/'
-        });
+        cookieUtils.setRefreshToken(res, refreshToken);
 
         const responseData = {
           message: "Logged in successfully",
@@ -125,13 +111,7 @@ export const loginController = asyncHandler(
 
 export const logOutController = asyncHandler(
   async (req: Request, res: Response) => {
-    // Clear refresh token cookie
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: config.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/'
-    });
+    cookieUtils.clearRefreshToken(res);
     
     return res
       .status(HTTPSTATUS.OK)
@@ -144,13 +124,7 @@ export const refreshTokenController = asyncHandler(
     const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
-      // Clear any existing cookie and return error
-      res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/'
-      });
+      cookieUtils.clearRefreshToken(res);
       throw new UnauthorizedException("Refresh token required");
     }
 
@@ -159,13 +133,7 @@ export const refreshTokenController = asyncHandler(
       const user = await UserModel.findById(decoded.userId).select("-password").populate('currentWorkspace', '_id');
       
       if (!user) {
-        // Clear invalid cookie
-        res.clearCookie('refreshToken', {
-          httpOnly: true,
-          secure: config.NODE_ENV === 'production',
-          sameSite: 'strict',
-          path: '/'
-        });
+        cookieUtils.clearRefreshToken(res);
         throw new UnauthorizedException("User not found");
       }
 
@@ -181,13 +149,7 @@ export const refreshTokenController = asyncHandler(
         accessToken: newAccessToken,
       });
     } catch (error) {
-      // Clear invalid cookie
-      res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/'
-      });
+      cookieUtils.clearRefreshToken(res);
       throw new UnauthorizedException("Invalid refresh token");
     }
   }
