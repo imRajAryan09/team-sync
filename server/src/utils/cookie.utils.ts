@@ -6,7 +6,8 @@ const getCookieOptions = () => ({
   httpOnly: true,
   secure: config.NODE_ENV === 'production',
   sameSite: config.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-  path: '/'
+  path: '/',
+  domain: config.NODE_ENV === 'production' ? undefined : undefined
 });
 
 export const cookieUtils = {

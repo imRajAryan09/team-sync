@@ -1,3 +1,4 @@
+import API from "./axios-client";
 
 interface JWTPayload {
   userId: string;
@@ -72,16 +73,11 @@ class TokenManager {
 
   private async performRefresh(): Promise<boolean> {
     try {
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include'
-      });
+      const response = await API.post('/auth/refresh');
       
-      if (response.ok) {
-        const { accessToken } = await response.json();
-        this.setAccessToken(accessToken);
-        return true;
-      }
+      const { accessToken } = response.data;
+      this.setAccessToken(accessToken);
+      return true;
     } catch (error) {
       console.error('Token refresh failed:', error);
     }
