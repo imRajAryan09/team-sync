@@ -4,10 +4,9 @@ import ms, { StringValue } from "ms";
 
 const getCookieOptions = () => ({
   httpOnly: true,
-  secure: config.NODE_ENV === 'production',
-  sameSite: config.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+  secure: true,
+  sameSite: 'none' as const,
   path: '/',
-  domain: config.NODE_ENV === 'production' ? undefined : undefined
 });
 
 export const cookieUtils = {

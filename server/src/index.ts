@@ -54,7 +54,7 @@ app.get(
   `/`,
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     return res.status(HTTPSTATUS.OK).json({
-      message: "Hello Subscribe to the channel & share",
+      message: "Piss Off, You Cunt.",
     });
   })
 );
